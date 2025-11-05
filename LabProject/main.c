@@ -81,6 +81,20 @@ void pwm_init34(uint16_t period, uint16_t duty3, uint16_t duty4)
     P2->SEL1 &=~0xC0;
 }
 
+void (*TimerA2Task) (void);
+void TimerA2_Init(void(*task)(void), uint16_t period)
+{
+    TimerA2Task = task;
+    TIMER_A2->CTL = 0x0280;
+    TIMER_A2->CCTL[0] = 0x0010;
+    TIMER_A2->CCR[0] = (period - 1);
+    TIMER_A2->EX0 = 0x0005;
+
+    NVIC->IP[3] = (NVIC->IP[3] & 0xFFFFFF00) | 0x00000040;
+    NVIC->ISER[0] = 0x00001000;
+    TIMER_A2->CTL |= 0x0014;
+}
+
 void motor_init()
 {
     P3->SEL0 &= ~0xC0;
@@ -128,7 +142,61 @@ void right_backward()
     P5->OUT |= 0x20;
 }
 
+void timer_A3_capture_init()
+{
+    P10->SEL0 |= 0x30;
+    P10->SEL1 &= ~0x30;
+    P10->DIR  &= ~0x30;
 
+    TIMER_A3->CTL &= ~0x0030;
+    TIMER_A3->CTL &= 0x0200;
+
+    TIMER_A3->CCTL[0] = 0x4910;
+    TIMER_A3->CCTL[1] = 0x4910;
+    TIMER_A3->EX0 &= ~0x0007;
+
+    NVIC->IP[3] = (NVIC->IP[3]&0x0000FFFF) | 0x404000000;
+    NVIC->ISER[3] = 0x0000C000;
+    TIMER_A3->CTL |= 0x0024;
+}
+
+uint16_t first_left;
+uint16_t first_right;
+
+uint16_t period_left;
+uint16_t period_right;
+
+//void TA3_0_IRQHandler()
+//{
+//    TIMER_A3->CCTL[0] &= ~0x0001;
+//    period_right = TIMER_A3->CCR[0] - first_right;
+//    first_right = TIMER_A3->CCR[0];
+//}
+
+uint32_t left_count;
+void TA3_N_IRQHandler()
+{
+    TIMER_A3->CCTL[1] &= ~0x0001;
+    period_left = TIMER_A3->CCR[1] - first_left;
+    first_left = TIMER_A3->CCR[1];
+
+
+    left_count++;
+
+    P2->OUT &= ~0x07;
+    P2->OUT |= 0x01;
+}
+
+uint32_t get_left_rpm()
+{
+    return 2000000 / period_left;
+}
+
+//void TA3_N_IRQHandler()
+//{
+//    TIMER_A3->CCTL[1] &= ~0x0001;
+//    left_count++;
+//}
 
 int main(void)
 {
@@ -138,9 +206,66 @@ int main(void)
     IR_Init();
     motor_init();
     systick_init();
+    timer_A3_capture_init();
 
     int sensor;
     // Running
+//    while(1)
+//    {
+//        P5->OUT |= 0x08;
+//        P9->OUT |= 0x04;
+//
+//        P7->DIR = 0xFF;
+//        P7->OUT = 0xFF;
+//
+//        Clock_Delay1us(10);
+//
+//        P7->DIR = 0x00;
+//
+//        Clock_Delay1us(1000);
+//
+//        if((P7->IN & 0b01111110) == 0b01111110){ // stop
+//            P2->OUT &= ~0x07;
+//            P2->OUT |=  0x02;
+//
+//            P2->OUT &= ~0xC0;
+//
+//            move(0,0);
+//        }
+//        else if((P7->IN & 0b00000000) == 0b00000000){ // go straight
+//            P2->OUT &= ~0x07;
+//            P2->OUT |= 0x01;
+//
+////            P5->OUT &= ~0x30;
+//            right_forward();
+//            left_forward();
+//            move(1500, 1500);
+//            P2->OUT |=  0xC0;
+////            P3->OUT |=  0xC0;
+//            systick_wait1ms();
+//        }
+//        else{ // stop
+//            P2->OUT &= ~0x07;
+//            P2->OUT &= ~0xC0;
+//
+//            move(0,0);
+//        }
+//
+//        P5->OUT &= ~0x08;
+//        P9->OUT &= ~0x04;
+//
+//        Clock_Delay1ms(10);
+//
+////        P5->OUT &= ~0x30;
+////        P2->OUT |=  0xC0;
+////        P3->OUT |=  0xC0;
+////        Clock_Delay1ms(1000);
+////
+////        P2->OUT &= ~0xC0;
+////        Clock_Delay1ms(1000);
+//    }
+
+//    TimerA2_Init(&TA3_N_IRQHandler, 50000);
     while(1)
     {
         P5->OUT |= 0x08;
@@ -155,17 +280,16 @@ int main(void)
 
         Clock_Delay1us(1000);
 
-        if((P7->IN & 0b01111110) == 0b01111110){
+        if(left_count > 180)
+        {
             P2->OUT &= ~0x07;
-            P2->OUT |=  0x02;
-
             P2->OUT &= ~0xC0;
-
-            move(0,0);
+            move(0, 0);
         }
-        else if((P7->IN & 0b00011000) == 0b00011000){
+        else
+        {
             P2->OUT &= ~0x07;
-            P2->OUT |= 0x01;
+//            P2->OUT |= 0x01;
 
 //            P5->OUT &= ~0x30;
             right_forward();
@@ -175,24 +299,10 @@ int main(void)
 //            P3->OUT |=  0xC0;
             systick_wait1ms();
         }
-        else{
-            P2->OUT &= ~0x07;
-            P2->OUT &= ~0xC0;
-
-            move(0,0);
-        }
 
         P5->OUT &= ~0x08;
         P9->OUT &= ~0x04;
 
         Clock_Delay1ms(10);
-
-//        P5->OUT &= ~0x30;
-//        P2->OUT |=  0xC0;
-//        P3->OUT |=  0xC0;
-//        Clock_Delay1ms(1000);
-//
-//        P2->OUT &= ~0xC0;
-//        Clock_Delay1ms(1000);
     }
 }
