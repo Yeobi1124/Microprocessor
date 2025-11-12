@@ -142,21 +142,21 @@ void right_backward()
     P5->OUT |= 0x20;
 }
 
-void timer_A3_capture_init()
+void timer_A3_capture_init(void)
 {
     P10->SEL0 |= 0x30;
     P10->SEL1 &= ~0x30;
     P10->DIR  &= ~0x30;
 
     TIMER_A3->CTL &= ~0x0030;
-    TIMER_A3->CTL &= 0x0200;
+    TIMER_A3->CTL = 0x0200;
 
     TIMER_A3->CCTL[0] = 0x4910;
     TIMER_A3->CCTL[1] = 0x4910;
     TIMER_A3->EX0 &= ~0x0007;
 
     NVIC->IP[3] = (NVIC->IP[3]&0x0000FFFF) | 0x404000000;
-    NVIC->ISER[3] = 0x0000C000;
+    NVIC->ISER[0] = 0x0000C000;
     TIMER_A3->CTL |= 0x0024;
 }
 
@@ -174,7 +174,7 @@ uint16_t period_right;
 //}
 
 uint32_t left_count;
-void TA3_N_IRQHandler()
+void TA3_N_IRQHandler(void)
 {
     TIMER_A3->CCTL[1] &= ~0x0001;
     period_left = TIMER_A3->CCR[1] - first_left;
@@ -197,6 +197,8 @@ uint32_t get_left_rpm()
 //    TIMER_A3->CCTL[1] &= ~0x0001;
 //    left_count++;
 //}
+
+
 
 int main(void)
 {
@@ -266,6 +268,8 @@ int main(void)
 //    }
 
 //    TimerA2_Init(&TA3_N_IRQHandler, 50000);
+    int stage = 0;
+
     while(1)
     {
         P5->OUT |= 0x08;
@@ -280,23 +284,38 @@ int main(void)
 
         Clock_Delay1us(1000);
 
-        if(left_count > 180)
+        if(stage == 0 && left_count > 491){
+            stage = 1;
+            left_count = 0;
+        }
+        else if(stage == 1 && left_count > 60) stage = 2;
+
+
+        stage = 1;
+
+        if(stage == 1)
         {
+            // Rotate
+            right_forward();
+            left_backward();
+            move(1500, 1500);
+
+            // 60 나중에 체크
+        }
+        else if (stage == 2)
+        {
+
             P2->OUT &= ~0x07;
             P2->OUT &= ~0xC0;
             move(0, 0);
         }
         else
         {
-            P2->OUT &= ~0x07;
-//            P2->OUT |= 0x01;
-
-//            P5->OUT &= ~0x30;
             right_forward();
             left_forward();
             move(1500, 1500);
             P2->OUT |=  0xC0;
-//            P3->OUT |=  0xC0;
+
             systick_wait1ms();
         }
 
