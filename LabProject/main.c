@@ -155,7 +155,7 @@ void timer_A3_capture_init(void)
     TIMER_A3->CCTL[1] = 0x4910;
     TIMER_A3->EX0 &= ~0x0007;
 
-    NVIC->IP[3] = (NVIC->IP[3]&0x0000FFFF) | 0x404000000;
+    NVIC->IP[3] = (NVIC->IP[3]&0x0000FFFF) | 0x40400000;
     NVIC->ISER[0] = 0x0000C000;
     TIMER_A3->CTL |= 0x0024;
 }
@@ -166,12 +166,19 @@ uint16_t first_right;
 uint16_t period_left;
 uint16_t period_right;
 
-//void TA3_0_IRQHandler()
-//{
-//    TIMER_A3->CCTL[0] &= ~0x0001;
-//    period_right = TIMER_A3->CCR[0] - first_right;
-//    first_right = TIMER_A3->CCR[0];
-//}
+uint32_t right_count;
+
+void TA3_0_IRQHandler()
+{
+    TIMER_A3->CCTL[0] &= ~0x0001;
+    period_right = TIMER_A3->CCR[0] - first_right;
+    first_right = TIMER_A3->CCR[0];
+
+    right_count++;
+
+    P2->OUT &= ~0x07;
+    P2->OUT |= 0x02;
+}
 
 uint32_t left_count;
 void TA3_N_IRQHandler(void)
@@ -286,12 +293,13 @@ int main(void)
 
         if(stage == 0 && left_count > 491){
             stage = 1;
-            left_count = 0;
+//            left_count = 0;
+            right_count = 0;
         }
-        else if(stage == 1 && left_count > 60) stage = 2;
+        else if(stage == 1 && right_count > 60) stage = 2;
 
 
-        stage = 1;
+//        stage = 1;
 
         if(stage == 1)
         {
@@ -299,8 +307,7 @@ int main(void)
             right_forward();
             left_backward();
             move(1500, 1500);
-
-            // 60 나중에 체크
+            P2->OUT |=  0xC0;
         }
         else if (stage == 2)
         {
