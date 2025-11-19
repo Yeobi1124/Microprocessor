@@ -140,6 +140,7 @@ int main(void)
     systick_init();
 
     int sensor;
+    int step = 0;
     // Running
     while(1)
     {
@@ -160,12 +161,10 @@ int main(void)
             P2->OUT &= ~0x07;
             P2->OUT |= 0x01;
 
-//            P5->OUT &= ~0x30;
             right_forward();
             left_forward();
-            move(1500, 1500);
+            move(300, 300);
             P2->OUT |=  0xC0;
-//            P3->OUT |=  0xC0;
             systick_wait1ms();
         }
         else if((P7->IN & 0b01111110) == 0b01111110){
@@ -173,25 +172,21 @@ int main(void)
             P2->OUT &= ~0x07;
             P2->OUT |=  0x02;
 
-            P2->OUT &= ~0xC0;
-
             move(0,0);
         }
         else{
             if((P7->IN & 0b00010000) == 0){ 
-                // 오른쪽 선에서 벗어난 경우
-                right_forward();
-                left_backward();
-                move(1000, 1000);
+                // 선에서 왼쪽으로 벗어난 경우
+                right_backward(); left_forward();
+                move(200, 200);
                 P2->OUT &= ~0x07;
                 P2->OUT |= 0x04;
                 systick_wait1ms();
             }
             else if((P7->IN & 0b00001000) == 0){ 
-                // 왼쪽 선에서 벗어난 경우
-                right_backward();
-                left_forward();
-                move(1000, 1000);
+                // 선에서 오른쪽으로 벗어난 경우
+                right_forward(); left_backward();
+                move(200, 200);
                 P2->OUT &= ~0x07;
                 P2->OUT |= 0x04;
                 systick_wait1ms();
