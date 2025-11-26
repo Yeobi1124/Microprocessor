@@ -45,13 +45,13 @@ void turn_on_led(int n)
 
 void IR_Init()
 {
-    // 0, 2, 4, 6 IR Emitter
+    // 0, 2, 4, 6 IR
     P5->SEL0 &= ~0x08;
     P5->SEL1 &= ~0x08;      // GPIO
     P5->DIR  |=  0x08;      // OUTPUT
     P5->OUT  &= ~0x08;      // turn off 4 even IR LEDs
 
-    // 1, 3, 5, 7 IR Emitter
+    // 1, 3, 5, 7 IR
     P9->SEL0 &= ~0x04;
     P9->SEL1 &= ~0x04;      // GPIO
     P9->DIR  |=  0x04;      // OUTPUT
@@ -128,7 +128,70 @@ void right_backward()
     P5->OUT |= 0x20;
 }
 
+void timer_A3_capture_init(void)
+{
+    P10->SEL0 |= 0x30;
+    P10->SEL1 &= ~0x30;
+    P10->DIR  &= ~0x30;
 
+    TIMER_A3->CTL &= ~0x0030;
+    TIMER_A3->CTL = 0x0200;
+
+    TIMER_A3->CCTL[0] = 0x4910;
+    TIMER_A3->CCTL[1] = 0x4910;
+    TIMER_A3->EX0 &= ~0x0007;
+
+    NVIC->IP[3] = (NVIC->IP[3]&0x0000FFFF) | 0x40400000;
+    NVIC->ISER[0] = 0x0000C000;
+    TIMER_A3->CTL |= 0x0024;
+}
+
+uint16_t first_left;
+uint16_t first_right;
+
+uint16_t period_left;
+uint16_t period_right;
+
+uint32_t right_count;
+uint32_t left_count;
+
+void TA3_0_IRQHandler()
+{
+    TIMER_A3->CCTL[0] &= ~0x0001;
+    period_right = TIMER_A3->CCR[0] - first_right;
+    first_right = TIMER_A3->CCR[0];
+
+    right_count++;
+}
+
+void TA3_N_IRQHandler(void)
+{
+    TIMER_A3->CCTL[1] &= ~0x0001;
+    period_left = TIMER_A3->CCR[1] - first_left;
+    first_left = TIMER_A3->CCR[1];
+
+
+    left_count++;
+}
+
+uint32_t get_left_rpm()
+{
+    return 2000000 / period_left;
+}
+
+void rotate_right(uint16_t duty)
+{
+    right_backward();
+    left_forward();
+    move(duty, duty);
+}
+
+void rotate_left(uint16_t duty)
+{
+    right_forward();
+    left_backward();
+    move(duty, duty);
+}
 
 int main(void)
 {
@@ -138,12 +201,20 @@ int main(void)
     IR_Init();
     motor_init();
     systick_init();
+    timer_A3_capture_init();
 
     int sensor;
-    int step = 0;
-    // Running
+    int step = 1;
+    int cnt = 0;
+    int left_speed = 600, right_speed = 600;
+    int stage_progress = 0;
+    // step 1: 직진하는 상태
+    // step 2: 왼쪽으로 회전해야 하는 상태
+    // step 3: 오른쪽으로 회전해야 하는 상태
+    // step 4: 곡선 추적 상태
+    // step 5: 종료 상태
     while(1)
-    {
+    {   
         P5->OUT |= 0x08;
         P9->OUT |= 0x04;
 
@@ -154,44 +225,114 @@ int main(void)
 
         P7->DIR = 0x00;
 
-        Clock_Delay1us(1000);
+        Clock_Delay1us(10);
 
-        if((P7->IN & 0b00011000) == 0b00011000){
-            // align 잘 된 경우
-            P2->OUT &= ~0x07;
-            P2->OUT |= 0x01;
-
-            right_forward();
-            left_forward();
-            move(300, 300);
-            P2->OUT |=  0xC0;
-            systick_wait1ms();
-        }
-        else if((P7->IN & 0b01111110) == 0b01111110){
-            // 종료 선 만난 경우
-            P2->OUT &= ~0x07;
-            P2->OUT |=  0x02;
-
+        if(step == 0){
             move(0,0);
-        }
-        else{
-            if((P7->IN & 0b00010000) == 0){ 
-                // 선에서 왼쪽으로 벗어난 경우
-                right_backward(); left_forward();
-                move(200, 200);
-                P2->OUT &= ~0x07;
-                P2->OUT |= 0x04;
-                systick_wait1ms();
-            }
-            else if((P7->IN & 0b00001000) == 0){ 
-                // 선에서 오른쪽으로 벗어난 경우
-                right_forward(); left_backward();
-                move(200, 200);
-                P2->OUT &= ~0x07;
-                P2->OUT |= 0x04;
-                systick_wait1ms();
+            if((P7->IN & 0b00011000) != 0b00011000){
+                step = 1;
             }
         }
+        else if(step == 1)
+        {
+            if((P7->IN & 0b00011000) == 0b00011000){
+                // align 잘 된 경우
+                right_forward();
+                left_forward();
+                move(left_speed, right_speed);
+                P2->OUT |=  0xC0;
+                systick_wait1ms();
+            }
+            else{
+                if(cnt == 0 || cnt == 3 || cnt == 4) step = 2;
+                else step = 3;
+                cnt++;
+                left_count = 0; right_count = 0;
+            }
+        }
+        else if(step == 2)
+        {
+            rotate_left(900);
+
+            if(right_count > 150){
+                step = 1;
+                if (cnt == 4) step = 4;
+                left_count = 0;
+                right_count = 0;
+            }
+        }
+        else if(step == 3)
+        {
+            rotate_right(900);
+
+            if(left_count > 150){
+                step = 1;
+                if (cnt == 5) step = 5;
+                left_count = 0;
+                right_count = 0;
+            }
+        }
+        else if(step == 4)
+        {
+            if((P7->IN & 0b00011000) == 0b00011000){
+                // align 잘 된 경우
+                right_forward();
+                left_forward();
+                move(left_speed, right_speed);
+                P2->OUT |=  0xC0;
+                systick_wait1ms();
+            }
+            else if((P7->IN & 0b00011000) == 0b0000000){
+                step = 3;
+                cnt++;
+            }
+            else{
+                if((P7->IN & 0b00010000) == 0){ 
+                    // 선에서 왼쪽으로 벗어난 경우
+                    right_backward(); left_forward();
+                    move(200, 200);
+                    P2->OUT &= ~0x07;
+                    P2->OUT |= 0x04;
+                    systick_wait1ms();
+                }
+                else if((P7->IN & 0b00001000) == 0){ 
+                    // 선에서 오른쪽으로 벗어난 경우
+                    right_forward(); left_backward();
+                    move(200, 200);
+                    P2->OUT &= ~0x07;
+                    P2->OUT |= 0x04;
+                    systick_wait1ms();
+                }
+            }
+        }
+        else if(step == 5)
+        {
+            if((P7->IN & 0b00011000) == 0b00011000){
+                // align 잘 된 경우
+                right_forward();
+                left_forward();
+                move(left_speed, right_speed);
+                P2->OUT |=  0xC0;
+                systick_wait1ms();
+            }
+            else if((P7->IN & 0b01111110) == 0b01111110){
+                // 종료 선 만난 경우
+                P2->OUT &= ~0x07;
+                P2->OUT |=  0x02;
+
+                move(0,0);
+            }
+        }
+
+
+        
+        // else if((P7->IN & 0b01111110) == 0b01111110){
+        //     // 종료 선 만난 경우
+        //     P2->OUT &= ~0x07;
+        //     P2->OUT |=  0x02;
+
+        //     move(0,0);
+        // }
 
         P5->OUT &= ~0x08;
         P9->OUT &= ~0x04;
