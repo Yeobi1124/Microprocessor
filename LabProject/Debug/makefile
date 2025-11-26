@@ -12,6 +12,10 @@ GEN_CMDS__FLAG :=
 ORDERED_OBJS += \
 "./Clock.obj" \
 "./main.obj" \
+"./stage1.obj" \
+"./stage2.obj" \
+"./stage3.obj" \
+"./stage4.obj" \
 "./startup_msp432p401r_ccs.obj" \
 "./system_msp432p401r.obj" \
 "../msp432p401r.cmd" \
@@ -144,8 +148,8 @@ LabProject.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)
-	-$(RM) "Clock.obj" "main.obj" "startup_msp432p401r_ccs.obj" "system_msp432p401r.obj" 
-	-$(RM) "Clock.d" "main.d" "startup_msp432p401r_ccs.d" "system_msp432p401r.d" 
+	-$(RM) "Clock.obj" "main.obj" "stage1.obj" "stage2.obj" "stage3.obj" "stage4.obj" "startup_msp432p401r_ccs.obj" "system_msp432p401r.obj" 
+	-$(RM) "Clock.d" "main.d" "stage1.d" "stage2.d" "stage3.d" "stage4.d" "startup_msp432p401r_ccs.d" "system_msp432p401r.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 
