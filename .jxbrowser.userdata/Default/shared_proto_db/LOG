@@ -1,2 +1,3 @@
-2025/09/10-11:42:21.035 1e54 Creating DB C:\Users\User\Documents\Hanyang\25_2\마프\Lab\.jxbrowser.userdata\Default\shared_proto_db since it was missing.
-2025/09/10-11:42:21.048 1e54 Reusing MANIFEST C:\Users\User\Documents\Hanyang\25_2\마프\Lab\.jxbrowser.userdata\Default\shared_proto_db/MANIFEST-000001
+2025/12/03-11:24:25.421 cf03 Reusing MANIFEST /Users/younhj/Desktop/MicroProcessor/Microprocessor/.jxbrowser.userdata/Default/shared_proto_db/MANIFEST-000001
+2025/12/03-11:24:25.421 cf03 Recovering log #3
+2025/12/03-11:24:25.421 cf03 Reusing old log /Users/younhj/Desktop/MicroProcessor/Microprocessor/.jxbrowser.userdata/Default/shared_proto_db/000003.log 

@@ -1,2 +1,3 @@
-2025/09/10-11:42:29.429 a64 Creating DB C:\Users\User\Documents\Hanyang\25_2\마프\Lab\.jxbrowser.userdata\Default\GCM Store\Encryption since it was missing.
-2025/09/10-11:42:29.445 a64 Reusing MANIFEST C:\Users\User\Documents\Hanyang\25_2\마프\Lab\.jxbrowser.userdata\Default\GCM Store\Encryption/MANIFEST-000001
+2025/12/03-11:24:36.145 b303 Reusing MANIFEST /Users/younhj/Desktop/MicroProcessor/Microprocessor/.jxbrowser.userdata/Default/GCM Store/Encryption/MANIFEST-000001
+2025/12/03-11:24:36.146 b303 Recovering log #3
+2025/12/03-11:24:36.146 b303 Reusing old log /Users/younhj/Desktop/MicroProcessor/Microprocessor/.jxbrowser.userdata/Default/GCM Store/Encryption/000003.log 

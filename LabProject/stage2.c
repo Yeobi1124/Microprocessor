@@ -2,9 +2,13 @@
 #include "Clock.h"
 #include <stdio.h>
 
+#define LED_OFF     0b000
 #define LED_RED     0b001
 #define LED_GREEN   0b010
 #define LED_BLUE    0b100
+#define LED_YELLOW  0b011
+#define LED_PURPLE  0b101
+#define LED_CYAN    0b110
 
 void systick_init()
 {
@@ -14,7 +18,7 @@ void systick_init()
 
 void systick_wait1ms()
 {
-    SysTick->LOAD = 48000; // 48000 MHz Clock Hardware?
+    SysTick->LOAD = 48000; // 48000 Hz Clock Hardware?
     SysTick->VAL = 0;
     while((SysTick->CTRL & 0x00010000) == 0){};
 }
@@ -37,10 +41,9 @@ void led_init()
     P2->OUT &= ~0x07;
 }
 
-void turn_on_led(int n)
+void turn_on_led(int color)
 {
-    P2->OUT  &= ~0x07;
-    P2->OUT |= n;
+    P2->OUT = (P2->OUT & ~0x07) | (color & 0x07);
 }
 
 void IR_Init()
@@ -162,6 +165,8 @@ void TA3_0_IRQHandler()
     first_right = TIMER_A3->CCR[0];
 
     right_count++;
+    P2->OUT &= ~0x07;
+    P2->OUT |= 0x02;
 }
 
 void TA3_N_IRQHandler(void)
@@ -170,13 +175,19 @@ void TA3_N_IRQHandler(void)
     period_left = TIMER_A3->CCR[1] - first_left;
     first_left = TIMER_A3->CCR[1];
 
-
     left_count++;
+    P2->OUT &= ~0x07;
+    P2->OUT |= 0x01;
 }
 
 uint32_t get_left_rpm()
 {
     return 2000000 / period_left;
+}
+
+uint32_t get_right_rpm()
+{
+    return 2000000 / period_right;
 }
 
 void rotate_right(uint16_t duty)
@@ -204,7 +215,7 @@ int main(void)
     timer_A3_capture_init();
 
     int sensor;
-    int step = 1;
+    int step = 2;
     int cnt = 0;
     int left_speed = 600, right_speed = 600;
     int stage_progress = 0;
@@ -229,12 +240,13 @@ int main(void)
 
         if(step == 0){
             move(0,0);
-            if((P7->IN & 0b00011000) != 0b00011000){
+            if((P7->IN & 0b00011000) == 0b00011000){
                 step = 1;
             }
         }
         else if(step == 1)
-        {
+        {   
+            turn_on_led(LED_GREEN);
             if((P7->IN & 0b00011000) == 0b00011000){
                 // align 잘 된 경우
                 right_forward();
@@ -252,9 +264,10 @@ int main(void)
         }
         else if(step == 2)
         {
-            rotate_left(900);
+            turn_on_led(LED_BLUE);
+            rotate_left(1000);
 
-            if(right_count > 150){
+            if(right_count > 1500){
                 step = 1;
                 if (cnt == 4) step = 4;
                 left_count = 0;
@@ -263,9 +276,10 @@ int main(void)
         }
         else if(step == 3)
         {
-            rotate_right(900);
+            turn_on_led(LED_BLUE);
+            rotate_right(1000);
 
-            if(left_count > 150){
+            if(left_count > 1500){
                 step = 1;
                 if (cnt == 5) step = 5;
                 left_count = 0;
@@ -274,6 +288,7 @@ int main(void)
         }
         else if(step == 4)
         {
+            turn_on_led(LED_YELLOW);
             if((P7->IN & 0b00011000) == 0b00011000){
                 // align 잘 된 경우
                 right_forward();
@@ -307,6 +322,7 @@ int main(void)
         }
         else if(step == 5)
         {
+            turn_on_led(LED_PURPLE);
             if((P7->IN & 0b00011000) == 0b00011000){
                 // align 잘 된 경우
                 right_forward();
@@ -322,6 +338,10 @@ int main(void)
 
                 move(0,0);
             }
+        }
+        else{
+            turn_on_led(LED_CYAN);
+            move(0,0);
         }
 
 
