@@ -205,7 +205,27 @@ uint32_t get_left_rpm()
 //    left_count++;
 //}
 
+uint32_t get_left_bit(uint32_t value) // 8bit
+{
+    uint32_t result = 0b10000000;
 
+    while(value / result != 1)
+    {
+        result >> 1;
+    }
+    return result;
+}
+
+uint32_t get_right_bit(uint32_t value) // 8bit
+{
+    uint32_t result = 1;
+
+    while(value % 0b10 != 1)
+    {
+        result << 1;
+    }
+    return result;
+}
 
 int main(void)
 {
@@ -225,6 +245,10 @@ int main(void)
     float change = 430;
 
     int dir = 0; // 0 : straight, 1 : clockwise, -1: counterclockwise
+
+    uint32_t firstBlackInput;
+    uint32_t rightJudgeBit;
+    uint32_t leftJudgeBit;
 
     while(1)
     {
@@ -269,12 +293,20 @@ int main(void)
             }
             else
             {
-                isEnterBlackArea = 1;
+                if(isEnterBlackArea == 0)
+                {
+                    isEnterBlackArea = 1;
+
+                    firstBlackInput = P7->IN & 0b11111111;
+
+                    rightJudgeBit = get_right_bit(firstBlackInput) >> 1;
+                    leftJudgeBit = get_left_bit(firstBlackInput) << 1;
+                }
 
                 // Set direction
                 if(dir == 0)
                 {
-                    if((P7->IN & 0b00001100) == 0b00001100)
+                    if((P7->IN & rightJudgeBit) == rightJudgeBit && !((P7->IN & leftJudgeBit) == leftJudgeBit))
                     {
                         turn_on_led(LED_BLUE);
 
@@ -283,7 +315,7 @@ int main(void)
                         rspeed += change;
                         lspeed -= change;
                     }
-                    else if((P7->IN & 0b00110000) == 0b00110000)
+                    else if((P7->IN & leftJudgeBit) == leftJudgeBit)
                     {
                         turn_on_led(LED_GREEN);
 
@@ -300,6 +332,7 @@ int main(void)
                     turn_on_led(LED_BLUE + LED_RED);
 
                     isEnterWhiteArea = 1;
+                    isEnterBlackArea = 0;
                 }
 
                 // move
