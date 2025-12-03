@@ -205,7 +205,27 @@ uint32_t get_left_rpm()
 //    left_count++;
 //}
 
+uint32_t get_left_bit(uint32_t value) // 8bit
+{
+    uint32_t result = 0b10000000;
 
+    while(value / result != 1)
+    {
+        result >> 1;
+    }
+    return result;
+}
+
+uint32_t get_right_bit(uint32_t value) // 8bit
+{
+    uint32_t result = 1;
+
+    while(value % 0b10 != 1)
+    {
+        result << 1;
+    }
+    return result;
+}
 
 int main(void)
 {
@@ -218,6 +238,7 @@ int main(void)
     timer_A3_capture_init();
 
     float speed = 1000;
+    float change = 800;
 
     int isRunning = 0;
 
@@ -240,18 +261,42 @@ int main(void)
 
         if(!isRunning)
         {
-            if((P7->IN & 0b01111110) == 0b01111110 && P7->IN != 0) isRunning = 1;
+            if(!((P7->IN & 0b01111110) == 0b01111110) && P7->IN != 0) isRunning = 1;
 
             // move
             move(0, 0);
             P2->OUT |=  0xC0;
+
+            turn_on_led(0b111);
 
             systick_wait1ms();
         }
         else
         {
             if((P7->IN & 0b01111110) == 0b01111110) isRunning = 0;
-            else
+
+            // debug
+            if(P7->IN == 0) P2->OUT |= LED_BLUE; // In white space
+            else if((P7->IN & 0b00011000) == 0b00011000) turn_on_led(LED_GREEN); // detect correct direction
+            else turn_on_led(LED_RED); // detect incorrect direction
+
+            if((P7->IN & 0b00100000) == 0b00100000 && !((P7->IN & 0b00000100) == 0b00000100)) // counterclockwise
+            {
+                // move
+                move(speed + change, speed - change);
+                P2->OUT |=  0xC0;
+
+                systick_wait1ms();
+            }
+            else if((P7->IN & 0b00000100) == 0b00000100 && !((P7->IN & 0b00100000) == 0b00100000)) // clockwise
+            {
+                // move
+                move(speed - change, speed + change);
+                P2->OUT |=  0xC0;
+
+                systick_wait1ms();
+            }
+            else // go straight
             {
                 // move
                 move(speed, speed);
