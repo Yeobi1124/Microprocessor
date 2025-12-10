@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define PWM_PERIOD 7500
+#define PWM_PERIOD 2500
 #define DEFAULT_SPEED 1
 
 #define N_SLEEP_PINS (0x40 | 0x80)
@@ -162,9 +162,9 @@ void move1(void){
             right_backward();
         }
         enable_motors();
-        Clock_Delay1us(750);
+        Clock_Delay1us(200);
         disable_motors();
-        Clock_Delay1ms(1);
+        Clock_Delay1ms(2);
         action=state();
     }
     stop_motors();
