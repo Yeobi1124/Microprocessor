@@ -217,12 +217,12 @@ int main(void)
     systick_init();
     timer_A3_capture_init();
 
-    float lspeed = 1000;
-    float rspeed = 1000;
+    float rate = 1.2;
+    float speed = 1000;
     short isEnterBlackArea = 0;
     short isEnterWhiteArea = 0;
 
-    float change = 430;
+    float change = 380;
 
     int dir = 0; // 0 : straight, 1 : clockwise, -1: counterclockwise
 
@@ -253,7 +253,7 @@ int main(void)
             }
             else // go
             {
-                move(lspeed, rspeed);
+                move(rate * (speed + dir * change), rate * (speed - dir * change));
                 P2->OUT |=  0xC0;
 
                 systick_wait1ms();
@@ -261,11 +261,15 @@ int main(void)
         }
         else
         {
+            uint32_t input = P7->IN & 0b11111111;
+
             // control both wheels speed
-            if(P7->IN == 0b11111111) // ignore
+            if(input == 0b11111111) // ignore
             {
                 turn_on_led(LED_RED);
                 move(0, 0);
+
+                dir = 0; // Initialize
             }
             else
             {
@@ -274,23 +278,17 @@ int main(void)
                 // Set direction
                 if(dir == 0)
                 {
-                    if((P7->IN & 0b00001100) == 0b00001100)
+                    if(((input & 0b00001100) == 0b00001100) && !((input & 0b00010000) == 0b00010000)) // counterclockwise
                     {
                         turn_on_led(LED_BLUE);
 
-                        dir = 1;
-
-                        rspeed += change;
-                        lspeed -= change;
+                        dir = -1;
                     }
-                    else if((P7->IN & 0b00110000) == 0b00110000)
+                    else if(((input & 0b00110000) == 0b00110000) && !((input & 0b00001000) == 0b00001000)) // clockwise
                     {
                         turn_on_led(LED_GREEN);
 
-                        dir = -1;
-
-                        rspeed -= change;
-                        lspeed += change;
+                        dir = 1;
                     }
                 }
 
@@ -303,7 +301,7 @@ int main(void)
                 }
 
                 // move
-                move(lspeed, rspeed);
+                move(rate * (speed + dir * change), rate * (speed - dir * change));
                 P2->OUT |=  0xC0;
 
                 systick_wait1ms();
