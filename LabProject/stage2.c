@@ -208,6 +208,7 @@ int main(void)
 {
     // Initialize
     Clock_Init48MHz();
+    Clock_Delay1ms(100);
     led_init();
     IR_Init();
     motor_init();
@@ -215,9 +216,9 @@ int main(void)
     timer_A3_capture_init();
 
     int sensor;
-    int step = 2;
+    int step = 1;
     int cnt = 0;
-    int left_speed = 600, right_speed = 600;
+    int left_speed = 800, right_speed = 800;
     int stage_progress = 0;
     // step 1: 직진하는 상태
     // step 2: 왼쪽으로 회전해야 하는 상태
@@ -265,7 +266,7 @@ int main(void)
         else if(step == 2)
         {
             turn_on_led(LED_BLUE);
-            rotate_left(1000);
+            rotate_left(4000);
 
             if(right_count > 1500){
                 step = 1;
@@ -277,7 +278,7 @@ int main(void)
         else if(step == 3)
         {
             turn_on_led(LED_BLUE);
-            rotate_right(1000);
+            rotate_right(4000);
 
             if(left_count > 1500){
                 step = 1;
